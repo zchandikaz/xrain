@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "111976903206",
+    "firebase_url": "https://xrain-4bc62.firebaseio.com",
+    "project_id": "xrain-4bc62",
+    "storage_bucket": "xrain-4bc62.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:111976903206:android:6d7935c7847c2e2a88ace7",
+        "android_client_info": {
+          "package_name": "com.bitrixlk.xrain"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "111976903206-dfppnv9s9c7b3m1obluug4lg7j14i5uj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bitrixlk.xrain",
+            "certificate_hash": "a47b2f9f40fb8a5f2ac1c3c29d7d7cc0e401c3c8"
+          }
+        },
+        {
+          "client_id": "111976903206-7t7kauu366nplaq40ob9t4o6frobsn5i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJHgtwUJCHQ3tN7lun3OsuYxk94ZZkJLg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "111976903206-7t7kauu366nplaq40ob9t4o6frobsn5i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
