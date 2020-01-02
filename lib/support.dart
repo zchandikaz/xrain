@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:flutter/widgets.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_database/firebase_database.dart';
 
+import 'send.dart';
 import 'scan.dart';
+import 'login.dart';
+import 'home.dart';
+
+final dbRef = FirebaseDatabase.instance.reference();
 
 // Common Settings
 class CS{
@@ -17,6 +25,10 @@ class CS{
 
 class Pages {
   static ScanPage get scan => ScanPage();
+  static SendPage send(file) => SendPage(file);
+  static LoginPage get login => LoginPage();
+  static HomePage get home => HomePage();
+  static SplashPage get splash => SplashPage();
 
 }
 
@@ -103,6 +115,11 @@ class CA{
 
   static double convertRange(double value, double fromMin, double fromMax, double toMin, double toMax){
     return (fromMin==fromMax)?((toMin+toMax)/2):((value-fromMin)/(fromMax-fromMin).abs()*(toMax-toMin).abs() + toMin);
+  }
+
+  static Future<File> pickFile() async {
+    File file = await FilePicker.getFile();
+    return file;
   }
 }
 
