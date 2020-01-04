@@ -81,8 +81,8 @@ class _ScanPageState extends State<ScanPage> {
           receiveBulk(
               syncTempId, str + unwrap(qrData), bulkCount + 1, bulkSize);
         }catch(e){
-          sendStatusRef.set(-2);
           CA.log("ERROR: ${e.toString()}");
+          sendStatusRef.set(-2);
           return;
         }
       }else if(status==-1){

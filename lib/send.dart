@@ -87,20 +87,27 @@ class _SendPageState extends State<SendPage>{
 
     if(bulkCount*bulkSize+bulkSize>=str.length){
       sendStr = str.substring(bulkCount*bulkSize,str.length-bulkCount*bulkSize);
+      print("last");
     }else{
       sendStr = str.substring(bulkCount*bulkSize,bulkSize);
+      print("inner");
     }
+
+    sendStr = wrapBulk(sendStr);
+
     setState(() {
-      qrData = wrapBulk(sendStr);
+      print("send str $bulkCount $bulkSize $sendStr");
+      qrData = sendStr;
     });
 
     sendStatusRef.onValue.listen((v){
       sendStatusRef.once().then((DataSnapshot snapshot) {
         var status = snapshot.value;
+        CA.log("send status changed - $status");
         if(status==bulkCount+0.5) {
           sendBulk(syncTempId, wrapBulk(str), bulkSize, bulkCount+1);
         }else if(status==-2){
-          CA.alert(context, "Transmision aborted.Please try again.");
+          CA.log("Transmision aborted.Please try again.");
           return;
         }
       });
