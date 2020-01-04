@@ -89,7 +89,7 @@ class _SendPageState extends State<SendPage>{
       sendStr = str.substring(bulkCount*bulkSize,str.length-bulkCount*bulkSize);
       print("last");
     }else{
-      sendStr = str.substring(bulkCount*bulkSize,bulkSize);
+      sendStr = str.substring(bulkCount*bulkSize,bulkCount*bulkSize+bulkSize);
       print("inner");
     }
 
