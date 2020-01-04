@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'dart:io';
 
+import 'package:path/path.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
 
@@ -68,34 +69,54 @@ class _SendPageState extends State<SendPage>{
   -2  - error
    */
 
+  String wrapBulk(bulk){
+    return "☺$bulk☺";
+  }
+
   sendBulk(String syncTempId, String str, int bulkSize, int bulkCount){
     var sendStatusRef = dbRef.child('sync_tmp').child(syncTempId).child('send_status');
-    sendStatusRef.set(0);
+
     String sendStr;
+    if(bulkCount*bulkSize>=str.length) {
+      sendStatusRef.set(-1);
+      //goto home
+      return;
+    }
+
+    sendStatusRef.set(bulkCount);
+
     if(bulkCount*bulkSize+bulkSize>=str.length){
       sendStr = str.substring(bulkCount*bulkSize,str.length-bulkCount*bulkSize);
     }else{
       sendStr = str.substring(bulkCount*bulkSize,bulkSize);
     }
     setState(() {
-      qrData = sendStr;
+      qrData = wrapBulk(sendStr);
     });
+
     sendStatusRef.onValue.listen((v){
       sendStatusRef.once().then((DataSnapshot snapshot) {
         var status = snapshot.value;
         if(status==bulkCount+0.5) {
-          sendBulk(syncTempId, str, bulkSize, bulkCount+1);
+          sendBulk(syncTempId, wrapBulk(str), bulkSize, bulkCount+1);
+        }else if(status==-2){
+          CA.alert(context, "Transmision aborted.Please try again.");
+          return;
         }
       });
     });
   }
 
-  sendFile(Uint8List fileData) async {
-    //print(fileData.toList().map((v)=>v.toRadixString(16)).toList());
-    //print(fileData.toList().map((v)=>v.toRadixString(16)).toList());
-    //print(fileData.toList().map((v)=>String.fromCharCode(v)).toList());
+  String encodeData(Uint8List data){
+    return basename(file.path) + "☻▬☻" + data.toList().map((v){
+      var h = v.toRadixString(16).toString();
+      h += h.length==1?"0":"";
+      return h;
+    }).toList().join();
+  }
 
-    String str = fileData.toList().map((v)=>String.fromCharCode(v)).toList().join();
+  sendFile(Uint8List fileData) async {
+    String str = encodeData(fileData);
 
     pairDevice((String syncTempId, int bulkSize){
       sendBulk(syncTempId, str, bulkSize, 0);

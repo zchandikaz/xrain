@@ -121,6 +121,12 @@ class CA{
     File file = await FilePicker.getFile();
     return file;
   }
+
+  static List<String> splitByLength(String str, int length){
+    String len = length.toString();
+    RegExp rx = new RegExp(r".{1," + len + r"}(?=(.{" + len + r"})+(?!.))|.{1," + len + r"}$");
+    return rx.allMatches(str).map((m) => m.group(0)).toList();
+  }
 }
 
 class CacheFile{
