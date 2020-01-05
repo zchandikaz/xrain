@@ -42,7 +42,7 @@ class CA{
     print('### [$i] | $val###');
   }
 
-  static void navigateWithoutBack(context, page){
+  static void navigateWithoutBack(BuildContext context, page){
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (context) => page

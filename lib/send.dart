@@ -22,7 +22,7 @@ class _SendPageState extends State<SendPage>{
   final File file;
   String notifyText = "Please wait";
   String qrData = "";
-  static const int BULK_SIZE = 1000;
+  static const int BULK_SIZE = 2000;
 
   int bulkSize;
   int bulkCount;
@@ -52,6 +52,7 @@ class _SendPageState extends State<SendPage>{
     sendStatusRef = dbRef.child('sync_tmp').child(syncTempId).child('send_status');
     initStatusRef.set(0);
     dbRef.child('sync_tmp').child(syncTempId).child('bulk_size').set(BULK_SIZE);
+    dbRef.child('sync_tmp').child(syncTempId).child('total_bulk_count').set(fullStr.length/BULK_SIZE);
 
     setState(() {
       qrData = syncTempId;
@@ -65,23 +66,25 @@ class _SendPageState extends State<SendPage>{
           paired = true;
 
           bulkSize = snapshot.value["bulk_size"];
-          sendStatusRef.onValue.listen(sendStatusChanged);
+          sendStatusRef.onValue.listen(onSendStatusChanged);
           onConnected();
         }
       });
     });
   }
 
-  sendStatusChanged(v){
+  onSendStatusChanged(v){
     sendStatusRef.once().then((DataSnapshot snapshot) {
       var status = snapshot.value;
       CA.log("send status changed - $status");
       if(status==bulkCount+0.5) {
         bulkCount++;
         sendBulk();
+      } else if(status==-1){
+        CA.navigateWithoutBack(this.context, Pages.home);
       }else if(status==-2){
         CA.log("Transmision aborted.Please try again.");
-        return;
+        CA.navigateWithoutBack(this.context, Pages.home);
       }
     });
   }
@@ -127,7 +130,6 @@ class _SendPageState extends State<SendPage>{
     });
 
   }
-
   String encodeData(Uint8List data){
     return basename(file.path) + "☻▬☻" + data.toList().map((v){
       var h = v.toRadixString(16).toString();

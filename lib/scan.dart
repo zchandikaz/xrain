@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:barcode_scan/barcode_scan.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:percent_indicator/circular_percent_indicator.dart';
 
 import 'support.dart';
 
@@ -18,9 +19,11 @@ class _ScanPageState extends State<ScanPage> {
 
   String syncTempId;
   int bulkSize, bulkCount;
+  int totalBulkCount;
   String receivedStr = "";
   DatabaseReference sendStatusRef;
   String result = "wait";
+  bool paired = false;
 
   Future scanQR() async{
     try{
@@ -46,15 +49,17 @@ class _ScanPageState extends State<ScanPage> {
 
     var sRef = dbRef.child('sync_tmp').child(syncTempId);
     sRef.once().then((
-      DataSnapshot snapshot) {
+        DataSnapshot snapshot) {
       if (snapshot.value == null) return;
 
       var status = snapshot.value["init_status"];
       CA.log("scan pairing - $status");
       if (status == 0) {
         initStatusRef.set(1);
-
+        paired = true;
         bulkSize = snapshot.value["bulk_size"];
+        double _totalBulkCount = snapshot.value["total_bulk_count"];
+        totalBulkCount = _totalBulkCount.ceil();
         onConnected();
       }
     });
@@ -80,6 +85,8 @@ class _ScanPageState extends State<ScanPage> {
       if(status-status.toInt()>0) return;
       status = status.toInt();
       CA.log("receive bulk| $bulkCount, $status");
+      CA.log("tbc $totalBulkCount $bulkCount");
+      setState(() {});
       if(status==bulkCount+1) {
         String qrData = await scanQR();
         sendStatusRef.set(status + 0.5);
@@ -97,7 +104,8 @@ class _ScanPageState extends State<ScanPage> {
         CA.log("stored");
         storeReceivedFile();
       }else if(status==-2){
-        CA.alert(context, "Sharing Aborted!");
+        CA.alert(this.context, "Sharing Aborted!");
+        CA.navigateWithoutBack(this.context, Pages.home);
         return;
       }
     });
@@ -125,7 +133,7 @@ class _ScanPageState extends State<ScanPage> {
 
     CA.log(dir.path +"/"+ fileName);
     writeToFile(fileData, dir.path + "/" + fileName).then((v){
-      CA.navigateWithoutBack(context, Pages.home);
+      CA.navigateWithoutBack(this.context, Pages.home);
     });
   }
 
@@ -136,11 +144,19 @@ class _ScanPageState extends State<ScanPage> {
   }
 
   void beginReceiveFile() async {
+    CA.log("begin receiving");
     pairDevice((){
       receivedStr = "";
       bulkCount = -1;
       sendStatusRef.onValue.listen(onReceiveStatusChanged);
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    beginReceiveFile();
   }
 
   Widget build(BuildContext context) {
@@ -149,19 +165,37 @@ class _ScanPageState extends State<ScanPage> {
         title: Text(CS.title),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(result),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: Icon(Icons.camera_alt),
-        label: Text("Scan"),
-        onPressed: beginReceiveFile,
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        child: getProgressWidget()
+      )
+    );
+  }
+
+  getProgressWidget(){
+    double curPercent = (bulkCount==0 || bulkCount==null)?0:(bulkCount+1)/totalBulkCount;
+
+    return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+        new CircularPercentIndicator(
+            radius: CA.getScreenWidth(context)/1.4,
+            lineWidth: 10.0,
+            percent: curPercent,
+            center: new Image(
+            image: AssetImage('assets/images/logo.png'),
+            width: 130,
+            height: 130,
+            ),
+            backgroundColor: Colors.grey[400],
+            progressColor: Colors.blue,
+          ),
+          Padding(padding: EdgeInsets.all(25),),
+          Text(paired?"${(curPercent*100).toStringAsFixed(2)}%":"CONNECTING", style: TextStyle(
+              fontSize: 50,
+              color: CS.bgColor1
+            ),
+          )
+      ]
     );
   }
 }
