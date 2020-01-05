@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "111976903206-cra9qgah6gpahtgn5ji2ald1m78bu7ho.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bitrixlk.xrain",
+            "certificate_hash": "93426345c61fd821f6dbd2ffc6d6d5bf1782ce2d"
+          }
+        },
+        {
           "client_id": "111976903206-dfppnv9s9c7b3m1obluug4lg7j14i5uj.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

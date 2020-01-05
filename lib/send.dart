@@ -24,6 +24,12 @@ class _SendPageState extends State<SendPage>{
   String qrData = "";
   static const int BULK_SIZE = 1000;
 
+  int bulkSize;
+  int bulkCount;
+  DatabaseReference sendStatusRef;
+  var syncTempId;
+  String fullStr;
+
   _SendPageState(this.file);
 
   Future<Uint8List> readFile() async {
@@ -37,10 +43,13 @@ class _SendPageState extends State<SendPage>{
     }
   }
 
-  void pairDevice(@deprecated void onConnected(String syncTempId, int bulkSize)){
+  void pairDevice(@deprecated void onConnected()){
+    bool paired = false;
+
     DateTime now = DateTime.now();
-    var syncTempId = SignInSupport.currentUser.uid + '${now.year}${now.month}${now.day}${now.hour}${now.minute}${now.second}';
+    syncTempId = SignInSupport.currentUser.uid + '${now.year}${now.month}${now.day}${now.hour}${now.minute}${now.second}';
     var initStatusRef = dbRef.child('sync_tmp').child(syncTempId).child('init_status');
+    sendStatusRef = dbRef.child('sync_tmp').child(syncTempId).child('send_status');
     initStatusRef.set(0);
     dbRef.child('sync_tmp').child(syncTempId).child('bulk_size').set(BULK_SIZE);
 
@@ -52,10 +61,28 @@ class _SendPageState extends State<SendPage>{
       dbRef.child('sync_tmp').child(syncTempId).once().then((DataSnapshot snapshot) {
         if(snapshot.value==null) return;
         var status = snapshot.value["init_status"];
-        if(status==1) {
-          onConnected(syncTempId, snapshot.value["bulk_size"]);
+        if(status==1 && paired==false) {
+          paired = true;
+
+          bulkSize = snapshot.value["bulk_size"];
+          sendStatusRef.onValue.listen(sendStatusChanged);
+          onConnected();
         }
       });
+    });
+  }
+
+  sendStatusChanged(v){
+    sendStatusRef.once().then((DataSnapshot snapshot) {
+      var status = snapshot.value;
+      CA.log("send status changed - $status");
+      if(status==bulkCount+0.5) {
+        bulkCount++;
+        sendBulk();
+      }else if(status==-2){
+        CA.log("Transmision aborted.Please try again.");
+        return;
+      }
     });
   }
 
@@ -73,11 +100,9 @@ class _SendPageState extends State<SendPage>{
     return "☺$bulk☺";
   }
 
-  sendBulk(String syncTempId, String str, int bulkSize, int bulkCount){
-    var sendStatusRef = dbRef.child('sync_tmp').child(syncTempId).child('send_status');
-
+  sendBulk(){
     String sendStr;
-    if(bulkCount*bulkSize>=str.length) {
+    if(bulkCount*bulkSize>=fullStr.length) {
       sendStatusRef.set(-1);
       //goto home
       return;
@@ -85,11 +110,12 @@ class _SendPageState extends State<SendPage>{
 
     sendStatusRef.set(bulkCount);
 
-    if(bulkCount*bulkSize+bulkSize>=str.length){
-      sendStr = str.substring(bulkCount*bulkSize,str.length-bulkCount*bulkSize);
+    CA.log("$bulkSize, $bulkCount, ${fullStr.length}");
+    if(bulkCount*bulkSize+bulkSize>=fullStr.length){
+      sendStr = fullStr.substring(bulkCount*bulkSize,fullStr.length);
       print("last");
     }else{
-      sendStr = str.substring(bulkCount*bulkSize,bulkSize);
+      sendStr = fullStr.substring(bulkCount*bulkSize,bulkCount*bulkSize+bulkSize);
       print("inner");
     }
 
@@ -100,33 +126,22 @@ class _SendPageState extends State<SendPage>{
       qrData = sendStr;
     });
 
-    sendStatusRef.onValue.listen((v){
-      sendStatusRef.once().then((DataSnapshot snapshot) {
-        var status = snapshot.value;
-        CA.log("send status changed - $status");
-        if(status==bulkCount+0.5) {
-          sendBulk(syncTempId, wrapBulk(str), bulkSize, bulkCount+1);
-        }else if(status==-2){
-          CA.log("Transmision aborted.Please try again.");
-          return;
-        }
-      });
-    });
   }
 
   String encodeData(Uint8List data){
     return basename(file.path) + "☻▬☻" + data.toList().map((v){
       var h = v.toRadixString(16).toString();
-      h += h.length==1?"0":"";
+      h = h.length==1?"0$h":h;
       return h;
     }).toList().join();
   }
 
-  sendFile(Uint8List fileData) async {
-    String str = encodeData(fileData);
+  beginSendFile(Uint8List fileData) async {
+    fullStr = encodeData(fileData);
 
-    pairDevice((String syncTempId, int bulkSize){
-      sendBulk(syncTempId, str, bulkSize, 0);
+    pairDevice((){
+      bulkCount = 0;
+      sendBulk();
     });
   }
 
@@ -138,17 +153,10 @@ class _SendPageState extends State<SendPage>{
       setState(() {
         if(fileData!=null){
           notifyText = "";
-          sendFile(fileData);
+          beginSendFile(fileData);
         }
       });
     });
-  }
-
-  str(n){
-    String s = "";
-    for(int i=0;i<n;i++)
-      s += '${i%10}';
-    return s;
   }
 
   Widget build(BuildContext context) {
