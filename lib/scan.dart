@@ -22,7 +22,7 @@ class _ScanPageState extends State<ScanPage> {
   int bulkSize;
   int bulkCount;
   int totalBulkCount;
-  int asynchronousInterval;
+  int asynchronousInterval = CS.asynchronousInterval;
 
   String receivedStr = "";
   DatabaseReference sendStatusRef;
@@ -34,13 +34,16 @@ class _ScanPageState extends State<ScanPage> {
       String qrResult = await BarcodeScanner.scan();
       return qrResult;
     }on PlatformException catch(ex){
+      CA.logi('ERR', ex.toString());
       if(ex.code==BarcodeScanner.CameraAccessDenied){
         CA.alert(context, "Camera permission was denied");
       } else {
         CA.alert(context, "Unknown Error $ex");
       }
     } on FormatException {
-      CA.alert(context, "You pressed the back button before scanning anything");
+      CA.alert(context, "You pressed the back button before scanning anything", onPressed: (){
+        CA.navigateWithoutBack(context, Pages.home);
+      });
     } catch (ex){
       CA.alert(context, "Unknown Error $ex");
     }
@@ -74,21 +77,22 @@ class _ScanPageState extends State<ScanPage> {
     List<Match> matches = exp.allMatches(str).toList();
     if(matches.length==1){
       var s = matches[0].group(0);
-      CA.log(s.substring(1,s.length-1));
+//      CA.log(s.substring(1,s.length-1));
       return s.substring(1,s.length-1);
     }else{
-      throw Exception("Format mismatch of data bulk");
+      CA.logi('Format Mismatch',str);
+      throw BulkFormatMismatchException();
     }
   }
 
   List unwrapAsync(String str){
-    try{
+    try {
       List d = unwrap(str).split("♫");
-      d[0] = int.parse(d[0]);
-      d[1] = d[1];
+      int.parse(d[0]); //test is valid
       return d;
     } on Exception catch(e){
-      throw Exception("Format mismatch of data bulk");
+      CA.logi('ERR', e.toString());
+      throw e;
     }
   }
 
@@ -107,8 +111,8 @@ class _ScanPageState extends State<ScanPage> {
         sendStatusRef.set(status + 0.5);
         CA.log("status changed by 0.5");
         try {
-          bulkCount++;
           receivedStr += unwrap(qrData);
+          bulkCount++;
           CA.log(receivedStr);
         }catch(e){
           CA.log("ERROR: ${e.toString()}");
@@ -119,8 +123,9 @@ class _ScanPageState extends State<ScanPage> {
         CA.log("stored");
         storeReceivedFile();
       }else if(status==-2){
-        CA.alert(this.context, "Sharing Aborted!");
-        CA.navigateWithoutBack(this.context, Pages.home);
+        CA.alert(this.context, "Sharing Aborted!", onPressed: (){
+          CA.navigateWithoutBack(this.context, Pages.home);
+        });
         return;
       }
     });
@@ -147,12 +152,13 @@ class _ScanPageState extends State<ScanPage> {
 //    var client = new HttpClient(context: clientContext);
 
     CA.log(dir.path +"/"+ fileName);
-    writeToFile(fileData, dir.path + "/" + fileName).then((v){
+    writeToFile(fileData, dir.path + "/" + fileName).then((File v){
+      CA.log(v.path);
       CA.navigateWithoutBack(this.context, Pages.home);
     });
   }
 
-  Future<void> writeToFile(Uint8List data, String path) {
+  Future<File> writeToFile(Uint8List data, String path) {
     final buffer = data.buffer;
     return new File(path).writeAsBytes(
         buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
@@ -167,54 +173,69 @@ class _ScanPageState extends State<ScanPage> {
         sendStatusRef.onValue.listen(onReceiveStatusChanged);
       });
     }else{
-      initializeAsynchronousTransmission();
+      await initializeAsynchronousTransmission();
       bulkCount = 0;
-      Future.delayed(Duration(milliseconds: asynchronousInterval), () {
-        receiveBulkAsync();
-      });
+
+      receiveBulkAsync();
+//      Future.delayed(Duration(milliseconds: asynchronousInterval), () {
+//
+//      });
     }
   }
 
-  void initializeAsynchronousTransmission() async {
-
+  Future initializeAsynchronousTransmission() async {
     try{
       String qrResult = await BarcodeScanner.scan();
-      List initData = qrResult.split(",").map((v)=>int.parse(v)).toList();
-      bulkSize = initData[0];
-      totalBulkCount = initData[1];
-      asynchronousInterval = initData[2];
+      List<String> initData = qrResult.split(",");
+      bulkSize = int.parse(initData[1]);
+      totalBulkCount = int.parse(initData[2]);
+      asynchronousInterval = int.parse(initData[3]);
+      CA.logi(0.1, '$bulkSize, $totalBulkCount, $asynchronousInterval');
     } on Exception catch(e){
-      CA.alert(this.context, "Inalid initialization, Sharing Aborted!");
-      CA.navigateWithoutBack(this.context, Pages.home);
+      CA.logi('ERR', e.toString());
+      CA.alert(this.context, "Inalid initialization, Sharing Aborted!", onPressed: (){
+        CA.navigateWithoutBack(this.context, Pages.home);
+      });
       return;
     }
-
   }
 
   void receiveBulkAsync() async {
-    String qrData = await scanQR();
-
     try {
-      bulkCount++;
-      List unwrapData = unwrapAsync(qrData);
-      int rBulkCount = unwrapData[0];
-      if(rBulkCount!=bulkCount){
-        CA.alert(this.context, "Data bulk is missing, Sharing Aborted!");
-        CA.navigateWithoutBack(this.context, Pages.home);
-        return;
-      }
-      receivedStr += unwrapData[1];
-      CA.log(receivedStr);
-      if(bulkCount==totalBulkCount){
-        storeReceivedFile();
-        return;
-      }
-      Future.delayed(Duration(milliseconds: asynchronousInterval), () {
+      String qrData = await scanQR();
+
+      if(qrData.length>16 && qrData.substring(0,16)=='INIT_ASYNC_TRANS'){
         receiveBulkAsync();
+        return;
+      }
+      List unwrapData = unwrapAsync(qrData);
+      int rBulkCount = int.parse(unwrapData[0]);
+      if(rBulkCount>bulkCount){
+        CA.alert(this.context, "Data bulk is missing, Sharing Aborted!", onPressed: (){
+          CA.navigateWithoutBack(this.context, Pages.home);
+        });
+        return;
+      } else if(rBulkCount==bulkCount) {
+        bulkCount++;
+        receivedStr += unwrapData[1];
+        CA.logi(10, receivedStr);
+        CA.logi(10.1, '$rBulkCount, $bulkCount, $totalBulkCount');
+        if (bulkCount == totalBulkCount) {
+          storeReceivedFile();
+          return;
+        }
+
+      }
+      receiveBulkAsync();
+    }
+    on BulkFormatMismatchException catch(e){
+      receiveBulkAsync();
+    }
+    on Exception catch(e){
+      CA.logi('ERR', e.toString());
+      CA.alert(this.context, "Error occured while data transmission, Sharing Aborted!", onPressed: (){
+        CA.navigateWithoutBack(this.context, Pages.home);
       });
-    }catch(e){
-      CA.alert(this.context, "Error occured while data transmission, Sharing Aborted!");
-      CA.navigateWithoutBack(this.context, Pages.home);
       return;
     }
   }
@@ -232,7 +253,7 @@ class _ScanPageState extends State<ScanPage> {
         title: Text(CS.title),
       ),
       body: Center(
-        child: getProgressWidget()
+        child: CS.isSynchronousTransmission?getProgressWidget():Container()
       )
     );
   }
@@ -264,5 +285,11 @@ class _ScanPageState extends State<ScanPage> {
           )
       ]
     );
+  }
+}
+
+class BulkFormatMismatchException implements Exception{
+  String errorMessage(){
+    return "Format mismatch of data bulk";
   }
 }
