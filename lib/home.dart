@@ -3,9 +3,14 @@ import 'dart:io';
 
 import 'support.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
 
 
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
   homeButton({icon, text, onPressed})=>RaisedButton(
     onPressed: onPressed,
     color: CS.bgColor1,
@@ -41,6 +46,23 @@ class HomePage extends StatelessWidget {
                 image: AssetImage('assets/images/logo.png'),
                 width: 170,
                 height: 170,
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text("Synchronize using internet"),
+                  Switch(
+                    value: CS.isSynchronousTransmission,
+                    onChanged: (value) {
+                      setState(() {
+                        CS.isSynchronousTransmission = value;
+                      });
+                    },
+                    activeTrackColor: Colors.lightBlue[100],
+                    activeColor: Colors.blue,
+                  )
+                ],
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,

@@ -26,6 +26,8 @@ class _SendPageState extends State<SendPage>{
 
   int bulkSize;
   int bulkCount;
+  int totalBulkCount;
+  int asynchronousInterval;
   DatabaseReference sendStatusRef;
   var syncTempId;
   String fullStr;
@@ -131,7 +133,7 @@ class _SendPageState extends State<SendPage>{
 
   }
   String encodeData(Uint8List data){
-    return basename(file.path) + "☻▬☻" + data.toList().map((v){
+    return basename(file.path) + "☻▬☻" + data.toList().map((v){ //ALT+258
       var h = v.toRadixString(16).toString();
       h = h.length==1?"0$h":h;
       return h;
@@ -140,10 +142,55 @@ class _SendPageState extends State<SendPage>{
 
   beginSendFile(Uint8List fileData) async {
     fullStr = encodeData(fileData);
+    bulkCount = 0;
+    if(CS.isSynchronousTransmission) {
+      pairDevice(() {
+        sendBulk();
+      });
+    }else{
+      bulkSize = BULK_SIZE;
+      totalBulkCount = fullStr.length~/bulkSize;
+      asynchronousInterval = CS.asynchronousInterval;
+      initializeAsynchronousTransmission();
+      Future.delayed(Duration(milliseconds: asynchronousInterval), () {
+        sendBulkAsync();
+      });
+    }
+  }
 
-    pairDevice((){
-      bulkCount = 0;
-      sendBulk();
+  void sendBulkAsync(){
+    String sendStr;
+    if(bulkCount*bulkSize>=fullStr.length) {
+      return;
+    }
+
+    sendStatusRef.set(bulkCount);
+
+    CA.log("$bulkSize, $bulkCount, ${fullStr.length}");
+    if(bulkCount*bulkSize+bulkSize>=fullStr.length){
+      sendStr = fullStr.substring(bulkCount*bulkSize,fullStr.length);
+      print("last");
+    }else{
+      sendStr = fullStr.substring(bulkCount*bulkSize,bulkCount*bulkSize+bulkSize);
+      print("inner");
+    }
+
+    sendStr = wrapBulk("$bulkCount♫"+sendStr); //ALT+14
+
+    setState(() {
+      print("send str $bulkCount $bulkSize $sendStr");
+      qrData = sendStr;
+    });
+    Future.delayed(Duration(milliseconds: asynchronousInterval), () {
+      bulkCount++;
+      sendBulkAsync();
+    });
+  }
+
+  void initializeAsynchronousTransmission(){
+    setState(() {
+      qrData = "$bulkSize,$totalBulkCount,${CS.asynchronousInterval}";
+      CA.logi(0.1, qrData);
     });
   }
 

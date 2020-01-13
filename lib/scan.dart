@@ -18,8 +18,12 @@ class ScanPage extends StatefulWidget {
 class _ScanPageState extends State<ScanPage> {
 
   String syncTempId;
-  int bulkSize, bulkCount;
+
+  int bulkSize;
+  int bulkCount;
   int totalBulkCount;
+  int asynchronousInterval;
+
   String receivedStr = "";
   DatabaseReference sendStatusRef;
   String result = "wait";
@@ -73,6 +77,17 @@ class _ScanPageState extends State<ScanPage> {
       CA.log(s.substring(1,s.length-1));
       return s.substring(1,s.length-1);
     }else{
+      throw Exception("Format mismatch of data bulk");
+    }
+  }
+
+  List unwrapAsync(String str){
+    try{
+      List d = unwrap(str).split("♫");
+      d[0] = int.parse(d[0]);
+      d[1] = d[1];
+      return d;
+    } on Exception catch(e){
       throw Exception("Format mismatch of data bulk");
     }
   }
@@ -145,11 +160,63 @@ class _ScanPageState extends State<ScanPage> {
 
   void beginReceiveFile() async {
     CA.log("begin receiving");
-    pairDevice((){
-      receivedStr = "";
-      bulkCount = -1;
-      sendStatusRef.onValue.listen(onReceiveStatusChanged);
-    });
+    if(CS.isSynchronousTransmission) {
+      pairDevice(() {
+        receivedStr = "";
+        bulkCount = -1;
+        sendStatusRef.onValue.listen(onReceiveStatusChanged);
+      });
+    }else{
+      initializeAsynchronousTransmission();
+      bulkCount = 0;
+      Future.delayed(Duration(milliseconds: asynchronousInterval), () {
+        receiveBulkAsync();
+      });
+    }
+  }
+
+  void initializeAsynchronousTransmission() async {
+
+    try{
+      String qrResult = await BarcodeScanner.scan();
+      List initData = qrResult.split(",").map((v)=>int.parse(v)).toList();
+      bulkSize = initData[0];
+      totalBulkCount = initData[1];
+      asynchronousInterval = initData[2];
+    } on Exception catch(e){
+      CA.alert(this.context, "Inalid initialization, Sharing Aborted!");
+      CA.navigateWithoutBack(this.context, Pages.home);
+      return;
+    }
+
+  }
+
+  void receiveBulkAsync() async {
+    String qrData = await scanQR();
+
+    try {
+      bulkCount++;
+      List unwrapData = unwrapAsync(qrData);
+      int rBulkCount = unwrapData[0];
+      if(rBulkCount!=bulkCount){
+        CA.alert(this.context, "Data bulk is missing, Sharing Aborted!");
+        CA.navigateWithoutBack(this.context, Pages.home);
+        return;
+      }
+      receivedStr += unwrapData[1];
+      CA.log(receivedStr);
+      if(bulkCount==totalBulkCount){
+        storeReceivedFile();
+        return;
+      }
+      Future.delayed(Duration(milliseconds: asynchronousInterval), () {
+        receiveBulkAsync();
+      });
+    }catch(e){
+      CA.alert(this.context, "Error occured while data transmission, Sharing Aborted!");
+      CA.navigateWithoutBack(this.context, Pages.home);
+      return;
+    }
   }
 
   @override
