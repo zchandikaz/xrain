@@ -22,7 +22,7 @@ class _SendPageState extends State<SendPage>{
   final File file;
   String notifyText = "Please wait";
   String qrData = "";
-  static const int BULK_SIZE = 2000;
+  static const int BULK_SIZE = 1500;
 
   int bulkSize;
   int bulkCount;
@@ -148,8 +148,8 @@ class _SendPageState extends State<SendPage>{
         sendBulk();
       });
     }else{
-      bulkSize = BULK_SIZE;
-      totalBulkCount = fullStr.length~/bulkSize;
+      bulkSize = BULK_SIZE~/3;
+      totalBulkCount = (fullStr.length~/bulkSize) + (fullStr.length%bulkSize!=0?1:0);
       asynchronousInterval = CS.asynchronousInterval;
       initializeAsynchronousTransmission();
       Future.delayed(Duration(milliseconds: asynchronousInterval), () {
@@ -161,10 +161,9 @@ class _SendPageState extends State<SendPage>{
   void sendBulkAsync(){
     String sendStr;
     if(bulkCount*bulkSize>=fullStr.length) {
+      CA.navigateWithoutBack(this.context, Pages.home);
       return;
     }
-
-    sendStatusRef.set(bulkCount);
 
     CA.log("$bulkSize, $bulkCount, ${fullStr.length}");
     if(bulkCount*bulkSize+bulkSize>=fullStr.length){
@@ -181,6 +180,7 @@ class _SendPageState extends State<SendPage>{
       print("send str $bulkCount $bulkSize $sendStr");
       qrData = sendStr;
     });
+
     Future.delayed(Duration(milliseconds: asynchronousInterval), () {
       bulkCount++;
       sendBulkAsync();
@@ -189,7 +189,7 @@ class _SendPageState extends State<SendPage>{
 
   void initializeAsynchronousTransmission(){
     setState(() {
-      qrData = "$bulkSize,$totalBulkCount,${CS.asynchronousInterval}";
+      qrData = "INIT_ASYNC_TRANS,$bulkSize,$totalBulkCount,${CS.asynchronousInterval}";
       CA.logi(0.1, qrData);
     });
   }
