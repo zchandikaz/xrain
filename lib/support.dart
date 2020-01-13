@@ -65,7 +65,7 @@ class CA{
   static double getScreenWidth(var context) => MediaQuery.of(context).size.width;
   static double getScreenHeight(var context) => MediaQuery.of(context).size.height;
 
-  static void alert(var context, var content, {var title = CS.title}) {
+  static void alert(var context, var content, {var title = CS.title, @deprecated void onPressed()}) {
     // flutter defined function
     showDialog(
       context: context,
@@ -80,6 +80,7 @@ class CA{
               child: new Text("OK", style: new TextStyle(fontSize: 22.0)),
               onPressed: () {
                 Navigator.of(context).pop();
+                onPressed();
               },
             ),
           ],

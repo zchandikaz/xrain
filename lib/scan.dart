@@ -177,9 +177,6 @@ class _ScanPageState extends State<ScanPage> {
       bulkCount = 0;
 
       receiveBulkAsync();
-//      Future.delayed(Duration(milliseconds: asynchronousInterval), () {
-//
-//      });
     }
   }
 
