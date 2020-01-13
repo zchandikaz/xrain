@@ -21,8 +21,8 @@ class CS{
   static const String title = 'XRain';
   static Color bgColor1 = const Color(0xff4285ff);
   static Color fgColor1 = const Color(0xffffffff);
-  static bool isSynchronousTransmission = true;
-  static int asynchronousInterval = 2000;
+  static bool isSynchronousTransmission = false;
+  static int asynchronousInterval = 3000;
 }
 
 class Pages {
