@@ -33,6 +33,12 @@ dependencies:
   file_picker:
   firebase_database:
   percent_indicator:
+  flutter_launcher_icons:
+
+flutter_icons:
+  image_path: "assets/images/icon.png"
+  android: true
+  ios: true
 
 dev_dependencies:
   flutter_test:

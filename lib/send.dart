@@ -22,7 +22,7 @@ class _SendPageState extends State<SendPage>{
   final File file;
   String notifyText = "Please wait";
   String qrData = "";
-  static const int BULK_SIZE = 1500;
+  static const int BULK_SIZE = 1100;
 
   int bulkSize;
   int bulkCount;

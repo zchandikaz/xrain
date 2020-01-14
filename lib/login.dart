@@ -27,7 +27,7 @@ class LoginPage extends StatelessWidget {
                 ),
                 new Padding(padding: EdgeInsets.all(15.0)),
                 new Text(
-                  "Journey Mate".toUpperCase(),
+                  CS.title,
                   style: TextStyle(
                       fontSize: 35,
                       fontWeight: FontWeight.bold,
